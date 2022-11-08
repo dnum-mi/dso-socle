@@ -1,0 +1,170 @@
+---
+- name: search local user
+  uri:
+    url: "{{NEXUS_URL}}/security/users?userId={{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}"
+    method: GET
+    validate_certs: False
+    force_basic_auth: true
+    user: "{{ NEXUS_ADMIN }}"
+    password: "{{ NEXUS_ADMIN_PASSWORD }}"
+    headers:
+      Accept: "application/json"
+    status_code: 200
+    body_format: json
+  register: search_result
+
+- name: create random password
+  ansible.builtin.set_fact:
+    NEXUS_PASSWORD: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+  when: "search_result.json|length == 0"
+
+#{{ lookup('hashi_vault', 'secret={{VAULT_PATH}}/NEXUS:data token={{VAULT_TOKEN}} url={{VAULT_URL}}')['NEXUS_PASSWORD']}}
+#{{ lookup('hashi_vault', 'secret={{VAULT_PATH}}/NEXUS:NEXUS_PASSWORD token={{VAULT_TOKEN}} url={{VAULT_URL}}')}}
+- name: get existing password
+  ansible.builtin.set_fact:
+    NEXUS_PASSWORD: "{{ lookup('hashi_vault', 'secret={{VAULT_PATH}}/NEXUS:NEXUS_PASSWORD token={{VAULT_TOKEN}} url={{VAULT_URL}}')}}"
+  when: "search_result.json|length > 0"
+
+- name: create local repo maven snapshot
+  uri:
+    url: "{{NEXUS_URL}}/repositories/maven/hosted"
+    method: POST
+    validate_certs: False
+    force_basic_auth: true
+    user: "{{ NEXUS_ADMIN }}"
+    password: "{{ NEXUS_ADMIN_PASSWORD }}"
+    headers:
+      Accept: "application/json"
+    status_code: 201
+    body_format: json
+    body:
+      name: "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-repository-{{item}}"
+      online: true
+      storage:
+        blobStoreName: default
+        strictContentTypeValidation: true
+        writePolicy: allow_once
+      cleanup:
+        policyNames:
+          - string
+      component:
+        proprietaryComponents: true
+      maven:
+        versionPolicy: "MIXED"
+        layoutPolicy: "STRICT"
+        contentDisposition: "ATTACHMENT"
+  with_items:
+    - "snapshot"
+    - "release"
+  when: "search_result.json|length == 0"
+
+- name: create maven group
+  uri:
+    url: "{{NEXUS_URL}}/repositories/maven/group"
+    method: POST
+    validate_certs: False
+    force_basic_auth: true
+    user: "{{ NEXUS_ADMIN }}"
+    password: "{{ NEXUS_ADMIN_PASSWORD  }}"
+    headers:
+      Accept: "application/json"
+    status_code: 201
+    body_format: json
+    body:
+      name: "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-repository-group"
+      online: true
+      storage:
+        blobStoreName: default
+        strictContentTypeValidation: true
+      group:
+        memberNames:
+          - "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-repository-snapshot"
+          - "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-repository-release"
+          - maven-public
+  when: "search_result.json|length == 0"
+
+- name: create privileges
+  uri:
+    url: "{{NEXUS_URL}}/security/privileges/repository-view"
+    method: POST
+    validate_certs: False
+    force_basic_auth: true
+    user: "{{ NEXUS_ADMIN }}"
+    password: "{{ NEXUS_ADMIN_PASSWORD }}"
+    headers:
+      Accept: "application/json"
+    status_code: 201
+    body_format: json
+    body:
+      name: "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-privilege-{{item}}"
+      description: "Privilege for organization {{ORGANIZATION_NAME}}-{{ PROJECT_NAME }} for repo {{item}}"
+      actions:
+        - all
+      format: "maven2"
+      repository: "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-repository-{{item}}"
+  with_items:
+    - "snapshot"
+    - "release"
+    - "group"
+  when: "search_result.json|length == 0"
+
+- name: create role
+  uri:
+    url: "{{NEXUS_URL}}/security/roles"
+    method: POST
+    validate_certs: False
+    force_basic_auth: true
+    user: "{{ NEXUS_ADMIN }}"
+    password: "{{ NEXUS_ADMIN_PASSWORD }}"
+    headers:
+      Accept: "application/json"
+    status_code: 200
+    body_format: json
+    body:
+      id: "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-ID"
+      name: "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-role"
+      description: "desc"
+      privileges:
+        - "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-privilege-snapshot"
+        - "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-privilege-release"
+        - "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-privilege-group"
+  when: "search_result.json|length == 0"
+
+- name: create local user
+  uri:
+    url: "{{NEXUS_URL}}/security/users"
+    method: POST
+    validate_certs: False
+    force_basic_auth: true
+    user: "{{ NEXUS_ADMIN }}"
+    password: "{{ NEXUS_ADMIN_PASSWORD }}"
+    headers:
+      Accept: "application/json"
+    status_code: 200
+    body_format: json
+    body:
+      userId: "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}"
+      firstName: "Monkey D."
+      lastName: "Luffy"
+      emailAddress: "{{ EMAIL }}"
+      password: "{{ NEXUS_PASSWORD }}"
+      status: "active"
+      roles:
+        - "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}-ID"
+  when: "search_result.json|length == 0"
+
+- name: "Export result"
+  set_fact:
+    NEXUS_USERNAME: "{{ORGANIZATION_NAME}}-{{ PROJECT_NAME }}"
+    NEXUS_PASSWORD: "{{ NEXUS_PASSWORD }}"
+
+- name: Vault NEXUS informations
+  community.hashi_vault.vault_write:
+    url: "{{ VAULT_URL }}"
+    path: "{{ VAULT_PATH }}/NEXUS"
+    data:
+      data:
+        NEXUS_USERNAME: "{{ NEXUS_USERNAME }}"
+        NEXUS_PASSWORD: "{{ NEXUS_PASSWORD }}"
+    auth_method: token
+    token: "{{ VAULT_TOKEN }}"

@@ -1,0 +1,5 @@
+- name: Provisionning DSO
+  hosts: ldap
+  roles:
+    - init_ldap
+

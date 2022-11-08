@@ -1,0 +1,23 @@
+- name: Creating kubeconfig
+  copy:
+    dest: "~/.kube/config"
+    content: "{{lookup('vars','K8S_AUTH_KUBECONFIG')}}"
+
+- name: "Ensure port forward for ldap"
+  shell: nohup kubectl port-forward service/openldap 4439:1389 --namespace openshift-operators </dev/null >/dev/null 2>&1 &
+
+- name: "Create users ldap root"
+  ldap_entry:
+    dn: "ou=users,dc=example,dc=org"
+    objectClass: organizationalUnit
+  args: "{{ LDAP_AUTH }}"
+- name: "Root Admin user for quay"
+  ldap_entry:
+    dn: "cn=admin@example.com,ou=users,dc=example,dc=org"
+    objectClass: inetOrgPerson
+    attributes:
+      cn: "admin@example.com"
+      sn: "admin@example.com"
+      mail: "admin@example.com"
+      uid: "admin@example.com"
+  args: "{{ LDAP_AUTH }}"

@@ -1,0 +1,11 @@
+- name: Provisionning DSO
+  hosts: localhost
+  tasks:
+    - include_role:
+        name: "{{ item }}"
+      loop:
+        - keycloak-provisioning-project
+        - keycloak-provisioning-user
+        - ldap-provisioning-user
+        - gitlab-provisioning-user
+        - create-user-openshift

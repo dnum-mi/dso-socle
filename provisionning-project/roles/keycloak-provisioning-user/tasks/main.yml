@@ -1,0 +1,51 @@
+---
+# tasks file for keycloak-provisioning-user
+
+- name: Get Token
+  uri:
+    url: "{{ KC_API_URI }}/auth/realms/master/protocol/openid-connect/token"
+    method: POST
+    headers:
+      Content-Type: application/x-www-form-urlencoded
+    body_format: form-urlencoded
+    body:
+      grant_type: password
+      client_id: admin-cli
+      username: "{{ KC_ADMIN }}"
+      password: "{{ KC_PASSWORD }}"
+      realm: master
+      scope: openid
+  register: token
+
+- name: "Set token"
+  set_fact:
+    KC_TOKEN: "{{token.json.access_token}}"
+
+- name: Search User in KC
+  uri:
+    url: "{{ KC_API_URI }}/auth/admin/realms/{{KC_REALM}}/users?email={{ EMAIL }}"
+    method: GET
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ KC_TOKEN }}"
+    status_code: 200
+  register: user_search
+
+- name: Create User in KC
+  uri:
+    url: "{{ KC_API_URI }}/auth/admin/realms/{{KC_REALM}}/users"
+    method: POST
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ KC_TOKEN }}"
+    body_format: json
+    status_code: 201
+    body:
+      email: "{{ EMAIL }}"
+      emailVerified: true
+      enabled: true
+      username: "{{ EMAIL }}"
+  when: user_search.json|length == 0
+
+- include_tasks: groups.yml
+  loop: "{{ ENV_LIST }}"

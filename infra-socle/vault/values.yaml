@@ -1,0 +1,19 @@
+global:
+  openshift: true
+server:
+  route:
+    enabled: true
+    host: vault-route-vault-system.apps.${SUBDOMAIN}.${DOMAIN_NAME}
+  ha:
+    enabled: false
+  standalone:
+    enabled: true
+  auditStorage:
+    enable: true
+  dataStorage:
+    enable: true
+    size: 23Gi
+  extraEnvironmentVars:
+    HTTP_PROXY: "http://${PROXY_SERVICE}/"
+    HTTPS_PROXY: "http://${PROXY_SERVICE}/"
+    NO_PROXY: "127.0.0.1,${SERVICE_CIDR_SUB},localhost,${LAN_CIDR_SUB}.0.0/16,*.svc.cluster.local,svc.cluter.local"

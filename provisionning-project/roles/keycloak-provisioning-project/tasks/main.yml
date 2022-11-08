@@ -1,0 +1,26 @@
+---
+# tasks file for keycloak-provisioning-project
+
+- name: Create a project admin group
+  community.general.keycloak_group:
+    name: "{{ FINAL_NAME }}-{{ item }}-RW"
+    realm: "{{KC_REALM}}"
+    state: present
+    auth_client_id: admin-cli
+    auth_keycloak_url: "{{ KC_API_URI }}/auth"
+    auth_realm: master
+    auth_username: "{{ KC_ADMIN }}"
+    auth_password: "{{ KC_PASSWORD }}"
+  with_items: "{{ ENV_LIST }}"
+
+- name: Create a project read group
+  community.general.keycloak_group:
+    name: "{{ FINAL_NAME }}-{{ item }}-RO"
+    realm: "{{KC_REALM}}"
+    state: present
+    auth_client_id: admin-cli
+    auth_keycloak_url: "{{ KC_API_URI }}/auth"
+    auth_realm: master
+    auth_username: "{{ KC_ADMIN }}"
+    auth_password: "{{ KC_PASSWORD }}"
+  with_items: "{{ ENV_LIST }}"

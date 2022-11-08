@@ -1,0 +1,55 @@
+- name: "Create GitLab Group organisation"
+  community.general.gitlab_group:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    validate_certs: false
+    name: "{{ ORGANIZATION_NAME }}"
+    parent: "forge-mi/projects"
+    subgroup_creation_level: "owner"
+    project_creation_level: "developer"
+    state: present
+
+- name: "Create GitLab project Group"
+  community.general.gitlab_group:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    validate_certs: false
+    name: "{{ PROJECT_NAME }}"
+    parent: "forge-mi/projects/{{ ORGANIZATION_NAME }}"
+    subgroup_creation_level: "owner"
+    project_creation_level: "developer"
+    state: present
+
+- name: "Create GitLab Argo in the group"
+  community.general.gitlab_project:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    name: "{{ PROJECT_NAME }}-argo"
+    group: "forge-mi/projects/{{ ORGANIZATION_NAME }}/{{ PROJECT_NAME }}"
+    state: present
+  with_items: "{{REPO_NAME}}"
+
+- name: "Create GitLab Project in the group"
+  community.general.gitlab_project:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    name: "{{ item }}"
+    group: "forge-mi/projects/{{ ORGANIZATION_NAME }}/{{ PROJECT_NAME }}"
+    state: present
+  with_items: "{{REPO_NAME}}"
+
+- name: "Export result"
+  set_fact:
+    ORGANIZATION_NAME: "{{ ORGANIZATION_NAME }}"
+    PROJECT_NAME: "{{PROJECT_NAME}}"
+
+- name: Vault GITLAB informations
+  community.hashi_vault.vault_write:
+    url: "{{ VAULT_URL }}"
+    path: "{{ VAULT_PATH }}/GITLAB"
+    data:
+      data:
+        ORGANIZATION_NAME: "{{ ORGANIZATION_NAME }}"
+        PROJECT_NAME: "{{PROJECT_NAME}}"
+    auth_method: token
+    token: "{{ VAULT_TOKEN }}"

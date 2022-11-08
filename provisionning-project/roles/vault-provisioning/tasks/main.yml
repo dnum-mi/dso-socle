@@ -1,0 +1,6 @@
+- name: Ensure lib present
+  pip:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - hvac

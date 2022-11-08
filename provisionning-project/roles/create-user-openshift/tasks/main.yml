@@ -1,0 +1,10 @@
+- name: Creating kubeconfig
+  copy:
+    dest: "~/.kube/config"
+    content: "{{lookup('vars','K8S_AUTH_KUBECONFIG')}}"
+
+- name: Create a Deployment by reading the definition from a local file
+  kubernetes.core.k8s:
+    state: present
+    template: ./templates/new_user.yml.j2
+  with_items: "{{ ENV_LIST }}"

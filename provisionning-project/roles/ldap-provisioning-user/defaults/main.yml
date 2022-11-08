@@ -1,0 +1,9 @@
+---
+# defaults file for ldap-provisioning-user
+ORGANIZATION_NAME: grp-test
+PROJECT_NAME: grp-test
+FINAL_NAME: "{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}"
+LDAP_AUTH: 
+  server_uri: ldap://ldapexample:349/
+  bind_dn: cn=default,dc=admin,dc=org
+  bind_pw: default_password

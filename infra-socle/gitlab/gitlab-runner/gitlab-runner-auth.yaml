@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gitlab-runner
+  namespace: gitlab-system
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "secrets"]
+    verbs: ["list", "get", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: "RoleBinding"
+metadata:
+  name: gitlab-runner-gitlab-runner
+  namespace: "gitlab-system"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: "Role"
+  name: gitlab-runner
+subjects:
+  - kind: ServiceAccount
+    name: gitlab-runner-sa
+    namespace: "gitlab-system"

@@ -1,0 +1,156 @@
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: OcValidRepos
+metadata:
+  name: repos-validation-{{ NAMESPACE_NAME }}
+  namespace: "{{ CONSTRAINT_NAMESPACE }}"
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+{% for env in ENV_LIST -%}
+      - {{ NAMESPACE_NAME }}-{{ env }}
+{% endfor %}
+
+  parameters:
+    repos:
+      - "docker.io"
+      - "quay.io"
+      - "quay.example.com"
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: OcSvcType
+metadata:
+  name: service-type-control-{{ NAMESPACE_NAME }}
+  namespace: "{{ CONSTRAINT_NAMESPACE }}"
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Service"]
+    namespaces:
+{% for env in ENV_LIST -%}
+      - {{ NAMESPACE_NAME }}-{{ env }}
+{% endfor %}
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: OcValidTags
+metadata:
+  name: tags-validation-{{ NAMESPACE_NAME }}
+  namespace: "{{ CONSTRAINT_NAMESPACE }}"
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+{% for env in ENV_LIST -%}
+      - {{ NAMESPACE_NAME }}-{{ env }}
+{% endfor %}
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: OcResources
+metadata:
+  name: resources-violation-{{ NAMESPACE_NAME }}
+  namespace: "{{ CONSTRAINT_NAMESPACE }}"
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+{% for env in ENV_LIST -%}
+      - {{ NAMESPACE_NAME }}-{{ env }}
+{% endfor %}
+
+  parameters:
+    resources:
+      - "cpu"
+      - "memory"
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: OcHttpsOnly
+metadata:
+  name: ingress-https-violation-{{ NAMESPACE_NAME }}
+  namespace: "{{ CONSTRAINT_NAMESPACE }}"
+spec:
+  match:
+    kinds:
+      - apiGroups: ["extensions", "networking.k8s.io"]
+        kinds: ["Ingress"]
+    namespaces:
+{% for env in ENV_LIST -%}
+      - {{ NAMESPACE_NAME }}-{{ env }}
+{% endfor %}
+
+  parameters:
+    tlsOptional: false
+
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: OcNamespace
+metadata:
+  name: namespace-validation-{{ NAMESPACE_NAME }}
+  namespace: "{{ CONSTRAINT_NAMESPACE }}"
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds:
+          - Pod
+          - PodTemplate
+          - Service
+          - ConfigMap
+          - Secret
+          - ServiceAccount
+          - PersistentVolumeClaim
+          - LimitRange
+          - ReplicationController
+      
+      - apiGroups: ["apps"]
+        kinds:
+          - Deployment
+          - DaemonSet
+          - ReplicaSet
+          - StatefulSet
+          - ControllerRevision
+      
+      - apiGroups: ["batch"]
+        kinds:
+          - Job
+          - CornJob
+      
+      - apiGroups: ["events.k8s.io"]
+        kinds:
+          - Event
+      
+      - apiGroups: ["networking.k8s.io"]
+        kinds:
+          - Ingress
+          - NetworkPolicy
+      
+      - apiGroups: ["cert-manager.io"]
+        kinds:
+          - Issuer
+          - Certificate
+          - CertificateRequest
+        
+      - apiGroups: ["autoscaling.openshift.io/v1beta1"]
+        kinds:
+          - MachineAutoscaler
+
+      - apiGroups: ["autoscaling"]
+        kinds:
+          - HorizontalPodAutoscaler
+    namespaces:
+{% for env in ENV_LIST -%}
+      - {{ NAMESPACE_NAME }}-{{ env }}
+{% endfor %}
+
+  parameters:
+    namespace: {{ NAMESPACE_NAME }}

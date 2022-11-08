@@ -1,0 +1,51 @@
+- name: create random password
+  ansible.builtin.set_fact:
+    GITLAB_PASSWORD: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+
+- name: Get gitlab User
+  uri:
+    url: "{{ GITLAB_URL }}api/v4/users?search={{EMAIL}}"
+    method: GET
+    status_code: 200
+    headers:
+      PRIVATE-TOKEN: "{{ GITLAB_TOKEN }}"
+  register: gitlab_search
+
+- name: "Create GitLab User"
+  community.general.gitlab_user:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    validate_certs: false
+    name: "{{EMAIL}}"
+    username: "{{GITLAB_USERNAME}}"
+    email: "{{ EMAIL }}"
+    password: "{{GITLAB_PASSWORD}}"
+    confirm: false
+  register: gitlab_create
+  ignore_errors: True
+  when: gitlab_search.json|length == 0
+
+- name: "Set old username"
+  set_fact:
+    GITLAB_USERNAME: "{{gitlab_search.json[0].username}}"
+  when: gitlab_search.json|length > 0
+
+- name: Vault GITLAB informations
+  community.hashi_vault.vault_write:
+    url: "{{ VAULT_URL }}"
+    path: "{{ VAULT_PATH }}/GITLAB"
+    data:
+      data:
+        GITLAB_USERNAME: "{{ GITLAB_USERNAME }}"
+        GITLAB_PASSWORD: "{{ GITLAB_PASSWORD }}"
+    auth_method: token
+    token: "{{ VAULT_TOKEN }}"
+
+- name: "Add created user to group"
+  community.general.gitlab_group_members:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    gitlab_group: "forge-mi/projects/{{ ORGANIZATION_NAME }}/{{ PROJECT_NAME }}"
+    gitlab_user: "{{GITLAB_USERNAME}}"
+    access_level: "{{LEVEL}}"
+    state: present

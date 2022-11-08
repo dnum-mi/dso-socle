@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openldap-secret
+  namespace: openshift-operators
+type: Opaque
+data:
+  adminpassword: ${LDAP_ADMIN_PASSWORD}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openldap
+  namespace: openshift-operators
+  labels:
+    name: openldap
+spec:
+  selector:
+    matchLabels:
+      name: openldap
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: openldap
+    spec:
+      serviceAccountName: ldap-sa
+      containers:
+        - name: openldap
+          image: docker.io/dinkel/openldap
+          env:
+            - name: SLAPD_DOMAIN
+              value: "example.org"
+            - name: LDAP_ADMIN_USERNAME
+              value: "admin"
+            - name: SLAPD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: adminpassword
+                  name: openldap-secret
+            - name: SLAPD_CONFIG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: adminpassword
+                  name: openldap-secret
+            - name: SLAPD_ADDITIONAL_MODULES
+              value: "memberof"
+            - name: SLAPD_FORCE_RECONFIGURE
+              value: "true"
+          ports:
+            - name: tcp-ldap
+              containerPort: 389
+          volumeMounts:
+            - mountPath: /var/lib/ldap
+              name: ldap-data
+      volumes:
+        - name: ldap-data
+          persistentVolumeClaim:
+            claimName: ldap-data-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openldap
+  namespace: openshift-operators
+  labels:
+    name: openldap
+spec:
+  type: ClusterIP
+  ports:
+    - name: tcp-ldap
+      port: 1389
+      targetPort: tcp-ldap
+  selector:
+    name: openldap

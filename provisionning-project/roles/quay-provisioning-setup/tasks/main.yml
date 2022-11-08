@@ -1,0 +1,140 @@
+---
+# tasks file for quay-provisioning-setup
+
+- name: Get Quay Organization
+  uri:
+    url: "{{ QUAY_API_URI }}/organization/{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}"
+    method: GET
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ QUAY_ADMIN_TOKEN }}"
+    body_format: json
+    status_code: [200, 404]
+  register: search_result
+
+- name: Create Quay Organization
+  uri:
+    url: "{{ QUAY_API_URI }}/organization/"
+    method: POST
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ QUAY_ADMIN_TOKEN }}"
+    body_format: json
+    status_code: 201
+    body:
+      name: "{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}"
+  when: search_result.json.name is not defined
+
+- name: Create Quay RO team
+  uri:
+    url: "{{ QUAY_API_URI }}/organization/{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}/team/read"
+    method: PUT
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ QUAY_ADMIN_TOKEN }}"
+    body_format: json
+    status_code: [200,201]
+    body:
+      name: read
+      role: member
+  when: search_result.json.name is not defined
+
+- name: Create Quay RO team default permission
+  uri:
+    url: "{{ QUAY_API_URI }}/organization/{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}/prototypes"
+    method: POST
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ QUAY_ADMIN_TOKEN }}"
+    body_format: json
+    status_code: [200,201]
+    body:
+      delegate:
+        is_org_member: true
+        is_robot: false
+        kind: "team"
+        name: "read"
+      role: "read"
+  when: search_result.json.name is not defined
+
+- name: Create Quay User Robot
+  uri:
+    url: "{{ QUAY_API_URI }}/organization/{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}/robots/{{ QUAY_ROBOT_USERNAME }}"
+    method: PUT
+    status_code: 201
+    headers:
+      Authorization: "Bearer {{ QUAY_ADMIN_TOKEN }}"
+  register: result_create
+  when: search_result.json.name is not defined
+
+
+- name: Sync Quay group read
+  uri:
+    url: "{{ QUAY_API_URI }}/organization/{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}/team/read/syncing"
+    method: POST
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ QUAY_ADMIN_TOKEN }}"
+    body_format: json
+    status_code: [201,200,500]
+    body:
+      group_dn: "cn={{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }},ou=users"
+
+# - name: Sync Quay group admin
+#   uri:
+#     url: "{{ QUAY_API_URI }}/organization/{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}/team/owners/syncing"
+#     method: POST
+#     headers:
+#       Content-Type: application/json
+#       Authorization: "Bearer {{ QUAY_ADMIN_TOKEN }}"
+#     body_format: json
+#     status_code: [201,200]
+#     body:
+#       group_dn: "cn={{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}-adm,ou=users"
+#   when: search_result.json.name is not defined
+
+- name: Get Quay User Robot
+  uri:
+    url: "{{ QUAY_API_URI }}/organization/{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}/robots/{{ QUAY_ROBOT_USERNAME }}"
+    method: GET
+    status_code: 200
+    headers:
+      Authorization: "Bearer {{ QUAY_ADMIN_TOKEN }}"
+  register: result_get
+  when: search_result.json.name is defined and search_result.json.name == FINAL_NAME
+
+- name: Add Robot to team owners
+  uri:
+    url: "{{ QUAY_API_URI }}/organization/{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}/team/owners/members/{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}+{{ QUAY_ROBOT_USERNAME }}"
+    method: PUT
+    status_code: 200
+    headers:
+      Authorization: "Bearer {{ QUAY_ADMIN_TOKEN }}"
+  when: search_result.json.name is not defined
+
+- name: "Set result update"
+  set_fact:
+    result: "{{ result_get.json.token }}"
+  when: result_get is defined and result_get.json.token is defined
+
+- name: "Set result create"
+  set_fact:
+    result: "{{ result_create.json.token }}"
+  when: search_result.json.name is not defined
+
+- name: "Export result"
+  set_fact:
+    QUAY_ROBOT_USERNAME: "{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}+{{ QUAY_ROBOT_USERNAME }}"
+    QUAY_ROBOT_TOKEN: "{{result}}"
+    QUAY_DOCKER_SECRET: "{{ (QUAY_ROBOT_USERNAME + ':' + result) | b64encode }}"
+
+- name: Vault QUAY informations
+  community.hashi_vault.vault_write:
+    url: "{{ VAULT_URL }}"
+    path: "{{ VAULT_PATH }}/QUAY"
+    data:
+      data:
+        QUAY_ROBOT_USERNAME: "{{ QUAY_ROBOT_USERNAME }}"
+        QUAY_ROBOT_TOKEN: "{{ QUAY_ROBOT_TOKEN }}"
+    auth_method: token
+    token: "{{ VAULT_TOKEN }}"

@@ -1,0 +1,10 @@
+- name: Provisionning Openshift
+  hosts: localhost
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - include_role:
+        name: "{{ item }}"
+      loop:
+        - create-namespace-openshift
+        - create-user-openshift

@@ -1,0 +1,9 @@
+#MVN_CONFIG_FILE: {{ lookup('file', './mvn_conf_file') }}
+MVN_CONFIG_FILE: "${MVN_CONFIG_FILE}"
+NEXUS_URL: "https://nexus/"
+QUAY_URL: "https://quay/"
+SONAR_URL: "https://sonar/"
+VAULT_AUTH_PATH: "jwt"
+VAULT_AUTH_ROLE: "gitlab"
+VAULT_URL: "https://vault/"
+

@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${INGRESS_NAME}-http-solver
+  namespace: $INGRESS_NAMESPACE
+  annotations:
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
+spec:
+  rules:
+    - host: solver.apps.${SUBDOMAIN}.${DOMAIN_NAME}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: ${INGRESS_NAME}-letsencrypt-issuer
+  namespace: $INGRESS_NAMESPACE
+spec:
+  acme:
+    email: p.leclainche@actongroup.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: ${INGRESS_NAME}-issuer-account-key
+    solvers:
+    - http01:
+        ingress:
+          name: ${INGRESS_NAME}-http-solver
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${INGRESS_NAME}-ingress
+  namespace: $INGRESS_NAMESPACE
+  annotations:
+    cert-manager.io/cluster-issuer: ${INGRESS_NAME}-letsencrypt-issuer
+spec:
+  tls:
+    - hosts:
+        - ${INGRESS_HOSTNAME}
+      secretName: ${INGRESS_NAME}-issuer-account-key
+  rules:
+    - host: ${INGRESS_HOSTNAME}
+

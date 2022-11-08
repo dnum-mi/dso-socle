@@ -1,0 +1,7 @@
+- name: Provisionning DSO
+  hosts: gitlab
+  vars:
+     MVN_CONFIG_FILE: "{{ lookup('file', '{{ playbook_dir }}/mvn_conf_file') }}"
+  roles:
+    - init_gitlab
+

@@ -1,0 +1,11 @@
+- name: Provisionning DSO
+  hosts: localhost
+  tasks:
+    - name: Import du projet Git
+      include_role:
+        name: gitlab-checkout-project
+      loop:
+        - REPO_SRC: "{{ REPO_SRC }}"
+          REPO_DEST: "{{ REPO_DEST }}"
+      loop_control:
+        loop_var: REPOSITORY

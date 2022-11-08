@@ -1,0 +1,24 @@
+repo_pull_sync:
+  image: ubuntu:20.04
+  stage: build
+  only:
+    - api
+    - triggers
+  before_script:
+    - apt-get update -y && apt install gpg wget -y
+    - wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | tee /usr/share/keyrings/hashicorp-archive-keyring.gpg >/dev/null
+    - echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com focal main" | tee /etc/apt/sources.list.d/hashicorp.list
+    - apt-get update -y && apt-get install openssh-client git vault -y
+  script:
+    - export VAULT_ADDR=$VAULT_SERVER_URL
+    - export VAULT_TOKEN="$(vault write -field=token auth/jwt/login role=default-ci jwt=$CI_JOB_JWT)"
+    - export GIT_INPUT_USER=`vault kv get -field=GIT_INPUT_USER forge-dso/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}`
+    - export GIT_INPUT_PASSWORD=`vault kv get -field=GIT_INPUT_PASSWORD forge-dso/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}`
+    - export GIT_INPUT_URL=`vault kv get -field=GIT_INPUT_URL forge-dso/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}`
+    - export GIT_OUTPUT_USER=`vault kv get -field=GIT_OUTPUT_USER forge-dso/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}`
+    - export GIT_OUTPUT_PASSWORD=`vault kv get -field=GIT_OUTPUT_PASSWORD forge-dso/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}`
+    - export GIT_OUTPUT_URL=`vault kv get -field=GIT_OUTPUT_URL forge-dso/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}`
+    - git clone --mirror "https://${GIT_INPUT_USER}:${GIT_INPUT_PASSWORD}@${GIT_INPUT_URL}" ./clonerepo
+    - cd clonerepo
+    - git checkout ${GIT_BRANCH_DEPLOY}
+    - git push --mirror --prune "https://${GIT_OUTPUT_USER}:${GIT_OUTPUT_PASSWORD}@${GIT_OUTPUT_URL}"

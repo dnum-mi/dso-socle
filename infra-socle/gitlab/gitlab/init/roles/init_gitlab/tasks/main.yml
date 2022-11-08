@@ -1,0 +1,54 @@
+- name: "Create first level forge-mi directory"
+  community.general.gitlab_group:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    validate_certs: false
+    name: "forge-mi"
+    subgroup_creation_level: "owner"
+    project_creation_level: "developer"
+    state: present
+
+
+- name: "Create first level forge-mi directory"
+  community.general.gitlab_group:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    validate_certs: false
+    parent: "forge-mi"
+    name: "projects"
+    subgroup_creation_level: "owner"
+    project_creation_level: "developer"
+    state: present
+
+- name: "Set or update some CI/CD variables"
+  community.general.gitlab_group_variable:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    group: "forge-mi/projects"
+    purge: false
+    variables:
+      - name: "NEXUS_HOST_URL"
+        value: "{{ NEXUS_URL }}"
+      - name: "QUAY_ROOT_URL"
+        value: "{{ QUAY_API_URL }}"
+      - name: "SONAR_HOST_URL"
+        value: "{{ SONAR_API_URL }}"
+      - name: "VAULT_AUTH_PATH"
+        value: "{{ VAULT_AUTH_PATH }}"
+      - name: "VAULT_AUTH_ROLE"
+        value: "{{ VAULT_AUTH_ROLE }}"
+      - name: "VAULT_SERVER_URL"
+        value: "{{ VAULT_URL }}"
+      - name: "MVN_CONFIG_FILE"
+        variable_type: "file"
+        value: "{{ MVN_CONFIG_FILE }}"
+      - name: "HTTP_PROXY"
+        value: "{{ PROXY_DSO }}"
+      - name: "HTTPS_PROXY"
+        value: "{{ PROXY_DSO }}"
+      - name: "NO_PROXY"
+        value: "{{ NO_PROXY_DSO }}"
+      - name: "PROXY_HOST"
+        value: "{{ PROXY_HOST }}"
+      - name: "PROXY_PORT"
+        value: "{{ PROXY_PORT }}"

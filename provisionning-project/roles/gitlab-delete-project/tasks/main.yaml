@@ -1,0 +1,8 @@
+- name: Delete GitLab Project
+      community.general.gitlab_project:
+        api_url: "{{ GITLAB_URL }}"
+        api_token: "{{ GITLAB_TOKEN }}"
+        name: "{{ PROJECT_NAME }}"
+        group: "{{ GROUP_NAME }}"
+        state: absent
+

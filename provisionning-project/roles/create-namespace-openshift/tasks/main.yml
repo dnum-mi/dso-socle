@@ -1,0 +1,25 @@
+#- name: Creating kubeconfig
+#  copy:
+#    dest: "~/.kube/config"
+#    content: "{{lookup('vars','K8S_AUTH_KUBECONFIG')}}"
+
+- name: Create a k8s namespace
+  kubernetes.core.k8s:
+    name: "{{ NAMESPACE_NAME }}-{{ item }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+  with_items: "{{ ENV_LIST }}"
+
+- name: Set quay secret config
+  set_fact:
+    QUAY_PULL_SECRET: "{{ lookup('template', './secrettemplate.yml.j2') | b64encode }}"
+
+- name: Add quay pull secret
+  kubernetes.core.k8s:
+    state: present
+    template: ./templates/quaysecret.yml.j2
+# - name: Add constraint gatekeep
+#   kubernetes.core.k8s:
+#     state: present
+#     template: ./templates/constraint.yml.j2

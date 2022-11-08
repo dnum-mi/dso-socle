@@ -1,0 +1,84 @@
+- name: "Search Sonar User"
+  uri:
+    url: "{{ SONAR_API_URL }}api/users/search?q={{ SONAR_USERNAME }}"
+    method: GET
+    user: "{{SONAR_API_TOKEN}}"
+    password: ""
+    force_basic_auth: yes
+    status_code: [200]
+  register: search_result
+
+- name: get existing password
+  ansible.builtin.set_fact:
+    SONAR_PASSWORD: "{{ lookup('hashi_vault', 'secret={{VAULT_PATH}}/SONAR:SONAR_PASSWORD token={{VAULT_TOKEN}} url={{VAULT_URL}}')}}"
+  when: search_result.json.paging.total > 0
+  ignore_errors: yes
+  register: get_password
+
+- name: create random password
+  ansible.builtin.set_fact:
+    SONAR_PASSWORD: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+  when: search_result.json.paging.total == 0 or (get_password is defined and get_password.failed)
+
+- name: "Create Sonar User"
+  uri:
+    url: "{{ SONAR_API_URL }}api/users/create"
+    method: POST
+    user: "{{SONAR_API_TOKEN}}"
+    password: ""
+    body_format: form-urlencoded
+    body:
+      email: "{{ EMAIL }}"
+      local: "true"
+      login: "{{ SONAR_USERNAME }}"
+      name: "{{ SONAR_USERNAME }}"
+      password: "{{ SONAR_PASSWORD }}"
+    force_basic_auth: yes
+    status_code: [200]
+  when: search_result.json.paging.total == 0
+
+- name: "Revoke Sonar Token"
+  uri:
+    url: "{{ SONAR_API_URL }}api/user_tokens/revoke"
+    method: POST
+    user: "{{SONAR_API_TOKEN}}"
+    password: ""
+    body_format: form-urlencoded
+    body:
+      login: "{{ SONAR_USERNAME }}"
+      name: "Sonar Token for {{PROJECT_NAME}}"
+    force_basic_auth: yes
+    status_code: 204
+  when: search_result.json.paging.total > 0
+
+- name: "Create Sonar Token"
+  uri:
+    url: "{{ SONAR_API_URL }}api/user_tokens/generate"
+    method: POST
+    user: "{{SONAR_API_TOKEN}}"
+    password: ""
+    body_format: form-urlencoded
+    body:
+      login: "{{ SONAR_USERNAME }}"
+      name: "Sonar Token for {{PROJECT_NAME}}"
+    force_basic_auth: yes
+    status_code: 200
+  register: result
+
+- name: "Export result"
+  set_fact:
+    SONAR_USERNAME: "{{ SONAR_USERNAME }}"
+    SONAR_PASSWORD: "{{ SONAR_PASSWORD }}"
+    SONAR_TOKEN: "{{result.json.token}}"
+
+- name: Vault SONAR informations
+  community.hashi_vault.vault_write:
+    url: "{{ VAULT_URL }}"
+    path: "{{ VAULT_PATH }}/SONAR"
+    data:
+      data:
+        SONAR_PASSWORD: "{{ SONAR_PASSWORD }}"
+        SONAR_TOKEN: "{{ SONAR_TOKEN }}"
+        SONAR_USERNAME: "{{ SONAR_USERNAME }}"
+    auth_method: token
+    token: "{{ VAULT_TOKEN }}"

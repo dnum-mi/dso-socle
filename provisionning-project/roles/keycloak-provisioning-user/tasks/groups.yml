@@ -1,0 +1,63 @@
+- name: Search User in KC
+  uri:
+    url: "{{ KC_API_URI }}/auth/admin/realms/{{KC_REALM}}/users?email={{ EMAIL }}"
+    method: GET
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ KC_TOKEN }}"
+    status_code: 200
+  register: user_search
+
+- name: Search RO group in KC
+  uri:
+    url: "{{ KC_API_URI }}/auth/admin/realms/{{KC_REALM}}/groups?first=0&max=20&search={{ FINAL_NAME }}-{{ item }}-RO"
+    method: GET
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ KC_TOKEN }}"
+    status_code: 200
+  register: ro_group_search
+
+- name: Search RW group in KC
+  uri:
+    url: "{{ KC_API_URI }}/auth/admin/realms/{{KC_REALM}}/groups?first=0&max=20&search={{ FINAL_NAME }}-{{ item }}-RW"
+    method: GET
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ KC_TOKEN }}"
+    status_code: 200
+  register: rw_group_search
+
+- name: "Set id"
+  set_fact:
+    USER_ID: "{{ user_search.json[0].id }}"
+    RO_GROUP_ID: "{{ ro_group_search.json[0].id }}"
+    RW_GROUP_ID: "{{ rw_group_search.json[0].id }}"
+
+- name: Add User to ro group
+  uri:
+    url: "{{ KC_API_URI }}/auth/admin/realms/{{KC_REALM}}/users/{{ USER_ID }}/groups/{{ RO_GROUP_ID }}"
+    method: PUT
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ KC_TOKEN }}"
+    body_format: json
+    status_code: 204
+    body:
+      groupId: "{{ RO_GROUP_ID }}"
+      realm: "{{KC_REALM}}"
+      userId: "{{ USER_ID }}"
+
+- name: Add User to rw group
+  uri:
+    url: "{{ KC_API_URI }}/auth/admin/realms/{{KC_REALM}}/users/{{ USER_ID }}/groups/{{ RW_GROUP_ID }}"
+    method: PUT
+    headers:
+      Content-Type: application/json
+      Authorization: "Bearer {{ KC_TOKEN }}"
+    body_format: json
+    status_code: 204
+    body:
+      groupId: "{{ RW_GROUP_ID }}"
+      realm: "{{KC_REALM}}"
+      userId: "{{ USER_ID }}"

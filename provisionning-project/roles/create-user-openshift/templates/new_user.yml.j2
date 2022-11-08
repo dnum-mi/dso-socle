@@ -1,0 +1,22 @@
+---
+kind: User
+apiVersion: user.openshift.io/v1
+metadata:
+  name: "{{ EMAIL }}"
+groups: null
+{% for env in ENV_LIST -%}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: "{{ EMAIL }}-{{ K8S_PERMISSION_LEVEL }}-{{ NAMESPACE_NAME  }}-{{ env }}"
+  namespace: "{{ NAMESPACE_NAME }}-{{ env }}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: "{{ K8S_PERMISSION_LEVEL }}"
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: "{{ EMAIL }}"
+{% endfor %}

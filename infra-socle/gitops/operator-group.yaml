@@ -1,0 +1,15 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: gitops-operator-system
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: gitops-system
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: gitops-group-system
+  namespace: gitops-operator-system

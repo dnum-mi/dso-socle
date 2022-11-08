@@ -1,0 +1,20 @@
+- name: Provisionning DSO
+  hosts: localhost
+  tasks:
+    - include_role:
+        name: "{{ item }}"
+      loop:
+        - ldap-provisioning-project
+        - ldap-provisioning-user
+        - sonar-provisioning-user
+        - keycloak-provisioning-project
+        - keycloak-provisioning-user
+        - quay-provisioning-setup
+        - gitlab-provisioning-project
+        - gitlab-provisioning-user
+        - create-namespace-openshift
+        - create-user-openshift
+        - argo-provisioning-project
+        #        - sonar-default-permission
+        - nexus-provision-project
+        #        - gitlab-checkout-project

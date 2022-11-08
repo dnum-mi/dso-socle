@@ -1,0 +1,43 @@
+---
+# tasks file for ldap-provisioning-user
+
+- name: Create user root
+  ldap_entry:
+    dn: "ou=users,dc=example,dc=org"
+    objectClass: organizationalUnit
+  args: "{{ LDAP_AUTH }}"
+
+- name: Create user to ldap
+  ldap_entry:
+    dn: "cn={{ EMAIL }},ou=users,dc=example,dc=org"
+    objectClass: inetOrgPerson
+    attributes: 
+      cn: "{{ EMAIL }}"
+      sn : "{{ EMAIL }}"
+      mail: "{{ EMAIL }}"
+      uid: "{{ EMAIL }}"
+  args: "{{ LDAP_AUTH }}"
+
+- name: Create org group
+  ldap_entry:
+    dn: "cn={{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }},ou=users,dc=example,dc=org"
+    objectClass: groupOfNames
+    attributes:
+      member: "cn={{ EMAIL }},ou=users,dc=example,dc=org"  
+  args: "{{ LDAP_AUTH }}"
+
+- name: Add user to ldap groups
+  ldap_attrs:
+    dn: "cn={{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }},ou=users,dc=example,dc=org"
+    attributes:
+      member: "cn={{ EMAIL }},ou=users,dc=example,dc=org"     
+    state: present
+  args: "{{ LDAP_AUTH }}"
+
+# - name: Add user to admin ldap groups
+#   ldap_attrs:
+#     dn: "cn={{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}-adm,ou=users,dc=example,dc=org"
+#     attributes:
+#       member: "cn={{ EMAIL }},ou=users,dc=example,dc=org"     
+#     state: present
+#   args: "{{ LDAP_AUTH }}"

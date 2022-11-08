@@ -1,0 +1,70 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "{{ NAMESPACE_NAME }}-repo"
+  namespace: gitops-system
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  url: "{{ GITLAB_PROJECT_PATH }}"
+  name: private-repo
+  type: git
+  password: "{{ GITLAB_TOKEN }}"
+  username: "{{ GITLAB_USER }}"
+{% for env in ENV_LIST -%}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: "{{ NAMESPACE_NAME }}-{{ env }}-project"
+  namespace: gitops-system
+spec:
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  destinations:
+  - name: '*'
+    namespace: "{{ NAMESPACE_NAME }}-{{ env }}"
+    server: '*'
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  roles:
+  - description: "{{ NAMESPACE_NAME }}-{{ env }}-RO"
+    groups:
+    - "/{{ NAMESPACE_NAME }}-{{ env }}-RO"
+    name: "{{ NAMESPACE_NAME }}-{{ env }}-RO"
+    policies:
+    - p, proj:{{ NAMESPACE_NAME }}-{{ env }}-project:{{ NAMESPACE_NAME }}-{{ env }}-RO, applications, get, {{ NAMESPACE_NAME }}-{{ env }}-project/*, allow
+  - description: "{{ NAMESPACE_NAME }}-{{ env }}-RW"
+    groups:
+    - "/{{ NAMESPACE_NAME }}-{{ env }}-RW"
+    name: "{{ NAMESPACE_NAME }}-{{ env }}-RW"
+    policies:
+    - p, proj:{{ NAMESPACE_NAME }}-{{ env }}-project:{{ NAMESPACE_NAME }}-{{ env }}-RW, applications, *, {{ NAMESPACE_NAME }}-{{ env }}-project/*, allow
+  sourceRepos:
+  - "{{ GITLAB_PROJECT_PATH }}"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: "{{ NAMESPACE_NAME }}-{{ env }}"
+  namespace: gitops-system
+spec:
+  destination:
+    namespace: "{{ NAMESPACE_NAME }}-{{ env }}"
+    server: https://kubernetes.default.svc
+  project: "{{ NAMESPACE_NAME }}-{{ env }}-project"
+  source:
+    path: base
+    repoURL: "{{ GITLAB_PROJECT_PATH }}"
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+{% endfor %}

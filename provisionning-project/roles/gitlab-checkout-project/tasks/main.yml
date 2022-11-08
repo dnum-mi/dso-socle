@@ -1,0 +1,115 @@
+- name: Ensure lib present
+  pip:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - hvac
+    - jmespath
+
+- name: "Create GitLab Project in the group"
+  community.general.gitlab_project:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    name: "{{ REPOSITORY.REPO_DEST }}"
+    group: "forge-mi/projects/{{ ORGANIZATION_NAME }}/{{ PROJECT_NAME }}"
+    state: present
+
+- name: "Create GitLab Project Mirror in the group"
+  community.general.gitlab_project:
+    api_url: "{{ GITLAB_URL }}"
+    api_token: "{{ GITLAB_TOKEN }}"
+    name: "{{ REPOSITORY.REPO_DEST }}-mirror"
+    group: "forge-mi/projects/{{ ORGANIZATION_NAME }}/{{ PROJECT_NAME }}"
+    state: present
+  register: mirror_project
+
+- name: "Clone mirror repo"
+  ansible.builtin.shell: |
+    rm -Rf /tmp/{{ REPOSITORY.REPO_DEST }}-mirror
+    git clone "https://{{ GIT_OUTPUT_USER }}:{{ GIT_OUTPUT_PASSWORD }}@{{ GIT_OUTPUT_URL }}/{{ REPOSITORY.REPO_DEST }}-mirror.git" /tmp/{{ REPOSITORY.REPO_DEST }}-mirror
+
+- name: Mirror gitlab-ci
+  template:
+    src: ./templates/gitlab-ci.yml.j2
+    dest: "/tmp/{{ REPOSITORY.REPO_DEST }}-mirror/.gitlab-ci.yml"
+
+- name: Mirror script mirror
+  template:
+    src: ./templates/script-mirror.sh.j2
+    dest: "/tmp/{{ REPOSITORY.REPO_DEST }}-mirror/script-mirror.sh"
+
+- name: "Push mirror ci"
+  ansible.builtin.shell: |
+    cd /tmp/{{ REPOSITORY.REPO_DEST }}-mirror
+    git config user.email "{{EMAIL}}"
+    git config user.name "{{EMAIL}}"
+    git add -A
+    git commit -am "mirror"
+    git push
+
+- name: Get Project Triggers
+  uri:
+    url: "{{ GITLAB_URL }}api/v4/projects/{{ mirror_project.project.id }}/triggers"
+    method: GET
+    status_code: [200, 404]
+    headers:
+      PRIVATE-TOKEN: "{{ GITLAB_TOKEN }}"
+  register: gitlab_get_trigger
+
+- name: Set trigger token
+  set_fact:
+    filter_token: "{{ gitlab_get_trigger | json_query(querystr) }}"
+  vars:
+    querystr: "json[?description == `{{ TOKEN_NAME }}`].[token]"
+  when: gitlab_get_trigger.json | length > 0
+
+- name: Set trigger token
+  set_fact:
+    GIT_PIPELINE_TOKEN: "{{ filter_token | first | first }}"
+  when: filter_token is defined and filter_token | length > 0
+
+- name: Create Project Trigger
+  uri:
+    url: "{{ GITLAB_URL }}api/v4/projects/{{ mirror_project.project.id }}/triggers"
+    method: POST
+    status_code: 201
+    headers:
+      PRIVATE-TOKEN: "{{ GITLAB_TOKEN }}"
+      Content-Type: application/json
+    body_format: json
+    body:
+      description: "{{ TOKEN_NAME }}"
+  register: create_token
+  when: GIT_PIPELINE_TOKEN is not defined
+
+- name: Set trigger token
+  set_fact:
+    GIT_PIPELINE_TOKEN: "{{ create_token.json['token'] }}"
+  when: GIT_PIPELINE_TOKEN is not defined
+
+- name: "Migration repo"
+  ansible.builtin.shell: |
+    rm -Rf /tmp/{{ REPOSITORY.REPO_DEST }}
+    mkdir -p /tmp/{{ REPOSITORY.REPO_DEST }}
+    git clone --mirror "https://{{ GIT_INPUT_USER }}:{{ GIT_INPUT_PASSWORD }}@{{REPOSITORY.REPO_SRC}}" /tmp/{{ REPOSITORY.REPO_DEST }}
+    cd /tmp/{{ REPOSITORY.REPO_DEST }}
+    git remote add dso "https://{{ GIT_OUTPUT_USER }}:{{ GIT_OUTPUT_PASSWORD }}@{{ GIT_OUTPUT_URL }}/{{ REPOSITORY.REPO_DEST }}.git"
+    git push -u dso --all
+    git push -u dso --tags
+    cd ~
+
+- name: Vault Repo informations
+  community.hashi_vault.vault_write:
+    url: "{{ VAULT_URL }}"
+    path: "{{ VAULT_PATH }}/{{ REPOSITORY.REPO_DEST }}-mirror"
+    data:
+      data:
+        GIT_INPUT_URL: "{{ REPOSITORY.REPO_SRC }}"
+        GIT_INPUT_USER: "{{ GIT_INPUT_USER }}"
+        GIT_INPUT_PASSWORD: "{{ GIT_INPUT_PASSWORD }}"
+        GIT_OUTPUT_USER: "{{ GIT_OUTPUT_USER }}"
+        GIT_OUTPUT_PASSWORD: "{{ GIT_OUTPUT_PASSWORD }}"
+        GIT_OUTPUT_URL: "{{ GIT_OUTPUT_URL }}/{{ REPOSITORY.REPO_DEST }}.git"
+        GIT_PIPELINE_TOKEN: "{{ GIT_PIPELINE_TOKEN }}"
+    auth_method: token
+    token: "{{ VAULT_TOKEN }}"

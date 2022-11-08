@@ -1,0 +1,13 @@
+apiVersion: apps.gitlab.com/v1beta2
+kind: Runner
+metadata:
+  name: gitlab-runner
+  namespace: gitlab-system
+spec:
+  gitlabUrl: https://gitlab-op.apps.${SUBDOMAIN}.${DOMAIN_NAME}/
+  runUntagged: true
+  buildImage: alpine
+  token: gitlab-runner-secret
+  tags: openshift
+  env: custom-env
+  #config: custom-config-toml

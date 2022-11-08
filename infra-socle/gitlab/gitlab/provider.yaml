@@ -1,0 +1,17 @@
+name: openid_connect
+label: Keycloak
+args:
+  name: openid_connect
+  scope:
+    - openid
+    - profile
+    - email
+  response_type: code
+  issuer: https://keycloak-keycloak-system.apps.${SUBDOMAIN}.${DOMAIN_NAME}/auth/realms/dso
+  client_auth_method: query
+  discovery: true
+  uid_field: email
+  client_options:
+    identifier: gitlab-client
+    secret: ${GITLAB_CLIENT_SECRET}
+    redirect_uri: https://gitlab-op.apps.${SUBDOMAIN}.${DOMAIN_NAME}/users/auth/openid_connect/callback
