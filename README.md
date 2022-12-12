@@ -1,16 +1,31 @@
 # infra-dso-socle
 
-## Création de namespace
-```shell
-ansible-playbook ./provisioning-openshift.yml -i /inventory/dev -e "{\"ORGANIZATION_NAME\":\"test\",\"PROJECT_NAME\":\"test-env-project\",\"K8S_PERMISSION_LEVEL\":\"edit\",\"ENV_LIST\":['dev', 'staging', 'integration', 'prod'],\"EMAIL\":\"toto@test.com\"}" --connection=local --vault-password-file /app/vault-secret
+## Usage
+
+```bash
+# Get the help message
+make help
+backoffice           Creates the backoffite resources of the console
+dev-prepare          Set pre-commit configuration
+help                 This help message
+namespace            Creates a namespace and a user
 ```
 
+```bash
+# Set common variables
+export INVENTORY=inventory/dev
+export ORGANIZATION_NAME=test
+export K8S_PERMISSION_LEVEL=edit
+export EMAIL=toto@test.com
+export ENV_LIST="{\"ENV_LIST\":\"['dev', 'staging', 'integration', 'prod']\"}"
 
-## Provisioning de projets
+# Set the project's name
+export PROJECT_NAME=test-env-project
+make namespace
 
-```shell
-ansible-playbook ./provisioning-project-dso.yml -i inventory/dev \
--e "{\"REPO_NAME\": \"test-env\",\"ORGANIZATION_NAME\": \"test\",\"EMAIL\": \"toto@test.com\",\"PROJECT_NAME\": \"test-env-project\",\"ENV_LIST\":['dev', 'staging', 'integration', 'prod']}" --vault-password-file /app/vault-secret --connection=local 
+# Creates the given repository
+export REPO_NAME=my-repo
+make repository
 ```
 
 ## Notes
@@ -18,10 +33,10 @@ ansible-playbook ./provisioning-project-dso.yml -i inventory/dev \
 ***The following packages must be installed on the Ansible machine, before launching the gitlab playbooks***
 
 ```yaml
-name: Ensure Python3 Packages are already installed
-      become: yes
-      ansible.builtin.package:
-        name:
-          - python3-gitlab
-        state: present
+- name: Ensure Python3 Packages are already installed
+  become: yes
+  ansible.builtin.package:
+    state: present
+    name:
+    - python3-gitlab
 ```
