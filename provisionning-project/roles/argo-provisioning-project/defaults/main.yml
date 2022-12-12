@@ -1,3 +1,4 @@
+override_kubeconfig: false
 NAMESPACE_NAME: "{{ ORGANIZATION_NAME }}-{{ PROJECT_NAME }}"
 ENV_LIST: ["dev"]
 GITLAB_URL: https://gitlab.example.com/

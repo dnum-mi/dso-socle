@@ -1,4 +1,5 @@
 - name: Post-Install | Removing kubeconfig
+  when: override_kubeconfig is true or override_kubeconfig is false and override_kubeconfig.stat.exists is false
   file:
     path: "~/.kube/config"
     state: absent
