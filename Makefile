@@ -18,8 +18,8 @@ help: ## This help message
 dev-prepare: ## Set pre-commit configuration
 	pre-commit install
 
-.PHONY: namespace
-namespace: ## Creates a namespace and a user
+.PHONY: project
+project: ## Creates a namespace and a user for the given project
 	${ANSIBLE} ./provisionning-project/provisioning-openshift.yml \
 		-i ${INVENTORY} \
 		-e ORGANIZATION_NAME=${ORGANIZATION_NAME} \
@@ -28,8 +28,8 @@ namespace: ## Creates a namespace and a user
 		-e EMAIL=${EMAIL} \
 		-e ${ENV_LIST}
 
-.PHONY: backoffice
-backoffice: ## Creates the backoffite resources of the console
+.PHONY: repository
+repository: ## Creates the backoffice resources for the given repository
 	${ANSIBLE} ./provisionning-project/provisioning-project-dso.yml \
 		-i ${INVENTORY} \
 		-e REPO_NAME=${REPO_NAME} \

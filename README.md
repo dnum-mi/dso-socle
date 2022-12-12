@@ -1,31 +1,31 @@
 # infra-dso-socle
 
-## Création de namespace
-```shell
-ansible-playbook ./provisionning-project/provisioning-openshift.yml \
-  -i /inventory/dev \
-  --connection=local \
-  --vault-password-file /app/vault-secret \
-  -e ORGANIZATION_NAME=test \
-  -e PROJECT_NAME=test-env-project \
-  -e K8S_PERMISSION_LEVEL=edit \
-  -e EMAIL=toto@test.com \
-  -e "{\"ENV_LIST\":\"['dev', 'staging', 'integration', 'prod']\"}"
+## Usage
+
+```bash
+# Get the help message
+make help
+backoffice           Creates the backoffite resources of the console
+dev-prepare          Set pre-commit configuration
+help                 This help message
+namespace            Creates a namespace and a user
 ```
 
+```bash
+# Set common variables
+export INVENTORY=inventory/dev
+export ORGANIZATION_NAME=test
+export K8S_PERMISSION_LEVEL=edit
+export EMAIL=toto@test.com
+export ENV_LIST="{\"ENV_LIST\":\"['dev', 'staging', 'integration', 'prod']\"}"
 
-## Provisioning de projets
+# Set the project's name
+export PROJECT_NAME=test-env-project
+make namespace
 
-```shell
-ansible-playbook ./provisionning-project/provisioning-project-dso.yml \
-  -i inventory/dev \
-  --vault-password-file /app/vault-secret \
-  --connection=local \
-  -e REPO_NAME=test-env \
-  -e ORGANIZATION_NAME=test \
-  -e EMAIL=toto@test.com \
-  -e PROJECT_NAME=test-env-project \
-  -e "{\"ENV_LIST\":\"['dev', 'staging', 'integration', 'prod']\"}"
+# Creates the given repository
+export REPO_NAME=my-repo
+make repository
 ```
 
 ## Notes
