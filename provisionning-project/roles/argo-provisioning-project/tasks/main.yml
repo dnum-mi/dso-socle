@@ -10,7 +10,7 @@
     fail_msg: GITLAB_TOKEN is not valid
     that:
     - GITLAB_TOKEN is defined
-    - GITLAB_TOKEN | regex_search("^.+?$") | length > 0
+    - GITLAB_TOKEN | regex_search("^glpat-.{20}$") | length == 26
 
 - name: Assert | Check user
   assert:
