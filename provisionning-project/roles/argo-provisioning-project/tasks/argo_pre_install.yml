@@ -1,0 +1,10 @@
+- name: Pre-Install | Get kubeconfig facts
+  register: kubeconfig_stat
+  stat:
+    path: "~/.kube/config"
+
+- name: Pre-Install | Creating kubeconfig
+  when: override_kubeconfig is true or override_kubeconfig is false and override_kubeconfig.stat.exists it false
+  copy:
+    dest: "~/.kube/config"
+    content: "{{lookup('vars','K8S_AUTH_KUBECONFIG')}}"

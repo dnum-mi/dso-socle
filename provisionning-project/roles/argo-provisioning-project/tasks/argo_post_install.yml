@@ -1,0 +1,4 @@
+- name: Post-Install | Removing kubeconfig
+  file:
+    path: "~/.kube/config"
+    state: absent
