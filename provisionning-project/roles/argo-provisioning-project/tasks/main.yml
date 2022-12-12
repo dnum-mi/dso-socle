@@ -1,9 +1,45 @@
-- name: Creating kubeconfig
-  copy:
-    dest: "~/.kube/config"
-    content: "{{lookup('vars','K8S_AUTH_KUBECONFIG')}}"
+- name: Assert | Check project path
+  assert:
+    fail_msg: GITLAB_PROJECT_PATH must be a valid URL
+    that:
+    - GITLAB_PROJECT_PATH is defined
+    - GITLAB_PROJECT_PATH | length > 0
 
-- name: Create argo project
-  kubernetes.core.k8s:
-    state: present
-    template: ./templates/argo_project.yml.j2
+- name: Assert | Check token
+  assert:
+    fail_msg: GITLAB_TOKEN is not valid
+    that:
+    - GITLAB_TOKEN is defined
+    - GITLAB_TOKEN | regex_search("^.+?$") | length > 0
+
+- name: Assert | Check user
+  assert:
+    fail_msg: GITLAB_USER is not valid
+    that:
+    - GITLAB_USER is defined
+    - GITLAB_USER | length > 0
+
+- name: Assert | Check namespace
+  assert:
+    fail_msg: NAMESPACE_NAME must be a valid name
+    that:
+    - NAMESPACE_NAME is defined
+    - NAMESPACE_NAME | length > 0
+
+- name: Assert | Check kubeconfig
+  assert:
+    fail_msg: K8S_AUTH_KUBECONFIG is not valid
+    that:
+    - K8S_AUTH_KUBECONFIG is defined
+    - K8S_AUTH_KUBECONFIG is dict
+
+- name: Assert | Check override_kubeconfig
+  assert:
+    fail_msg: override_kubeconfig must be valid
+    that:
+    - override_kubeconfig is defined
+    - override_kubeconfig is boolean
+
+- include_tasks: argo_pre_install.yml
+- include_tasks: argo_install.yml
+- include_tasks: argo_post_install.yml
