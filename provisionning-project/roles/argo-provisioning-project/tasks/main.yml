@@ -1,3 +1,10 @@
+- name: Assert | Check Gitlab's URL
+  assert:
+    fail_msg: GITLAB_URL must be a valid URL
+    that:
+    - GITLAB_URL is defined
+    - (GITLAB_URL | urlsplit)['hostname'] != ""
+
 - name: Assert | Check project path
   assert:
     fail_msg: GITLAB_PROJECT_PATH must be a valid URL
@@ -10,7 +17,7 @@
     fail_msg: GITLAB_TOKEN is not valid
     that:
     - GITLAB_TOKEN is defined
-    - GITLAB_TOKEN | regex_search("^glpat-.{20}$") | length == 26
+    - GITLAB_TOKEN | regex_search("^glpat-[A-Za-z0-9]{20}$") | length == 26
 
 - name: Assert | Check user
   assert:
