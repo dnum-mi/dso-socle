@@ -1,0 +1,4 @@
+- name: Install | Create argo project
+  kubernetes.core.k8s:
+    state: present
+    template: ./templates/argo_project.yml.j2
