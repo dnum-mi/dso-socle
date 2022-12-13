@@ -1,25 +1,84 @@
-#- name: Creating kubeconfig
-#  copy:
-#    dest: "~/.kube/config"
-#    content: "{{lookup('vars','K8S_AUTH_KUBECONFIG')}}"
+- name: Assert | Deal with K8S_AUTH_KUBECONFIG
+  when:
+  - K8S_AUTH_KUBECONFIG is defined
+  - K8S_AUTH_KUBECONFIG | length > 0
+  block:
+  - name: Assert | Get cluster info using K8S_AUTH_KUBECONFIG
+    kubernetes.core.k8s_cluster_info:
+    register: cluster_info
+    charged_when: false
+    failed_when: false
+    kubeconfig: "{{ K8S_AUTH_KUBECONFIG }}"
 
-- name: Create a k8s namespace
-  kubernetes.core.k8s:
-    name: "{{ NAMESPACE_NAME }}-{{ item }}"
-    api_version: v1
-    kind: Namespace
-    state: present
-  with_items: "{{ ENV_LIST }}"
+  - name: Assert | Check cluster connectivity
+    assert:
+      fail_msg: The given K8S_AUTH_KUBECONFIG is not valid
+      that:
+      - cluster_info.rc == 0
 
-- name: Set quay secret config
-  set_fact:
-    QUAY_PULL_SECRET: "{{ lookup('template', './secrettemplate.yml.j2') | b64encode }}"
+- name: Assert | Deal without K8S_AUTH_KUBECONFIG
+  when: K8S_AUTH_KUBECONFIG is undefined or K8S_AUTH_KUBECONFIG | length == 0
+  block:
+  - name: Assert | Get cluster info using global auth
+    kubernetes.core.k8s_cluster_info:
+    register: cluster_info
+    charged_when: false
+    failed_when: false
 
-- name: Add quay pull secret
-  kubernetes.core.k8s:
-    state: present
-    template: ./templates/quaysecret.yml.j2
-# - name: Add constraint gatekeep
-#   kubernetes.core.k8s:
-#     state: present
-#     template: ./templates/constraint.yml.j2
+  - name: Assert | Check cluster connectivity
+    assert:
+      fail_msg: The global kubeconfig is not valid
+      that:
+      - cluster_info.rc == 0
+
+  - name: Assert | Set K8S_AUTH_KUBECONFIG to null
+    fact:
+      K8S_AUTH_KUBECONFIG:
+
+- name: Assert | Check organization
+  assert:
+    fail_msg: must be valid
+    that:
+    - ORGANIZATION_NAME defined
+    - ORGANIZATION_NAME | length > 0
+
+- name: Assert | Check namespace
+  assert:
+    fail_msg: NAMESPACE_NAME must be valid
+    that:
+    - NAMESPACE_NAME is defined
+    - NAMESPACE_NAME | length > 0
+
+- name: Assert | Check project
+  assert:
+    fail_msg: PROJECT_NAME must be valid
+    that:
+    - PROJECT_NAME is defined
+    - PROJECT_NAME | length > 0
+
+- name: Assert | Check environments
+  assert:
+    fail_msg: ENV_LIST must be valid
+    that:
+    - ENV_LIST is defined
+    - ENV_LIST | length > 0
+
+- name: Assert | Check constraints namespace
+  assert:
+    fail_msg: CONSTRAINT_NAMESPACE must be a valid name
+    that:
+    - CONSTRAINT_NAMESPACE is defined
+    - CONSTRAINT_NAMESPACE | length > 0
+
+- name: Assert | Find the given contraints namespace on the cluster
+  command: kubectl get ns {{ CONSTRAINT_NAMESPACE }}
+  register: kubectl_ns
+  changed_when: false
+  failed_whem: false
+
+- name: Assert | Check constraints namespace
+  assert:
+    fail_msg: The given namespace cannot be found on the cluster
+    that: kubectl_ns.rc == 0
+
+- include_tasks: namespace_install.yml

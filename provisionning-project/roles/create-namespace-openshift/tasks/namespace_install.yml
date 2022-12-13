@@ -1,0 +1,20 @@
+- name: Install | Create a k8s namespace
+  with_items: "{{ ENV_LIST }}"
+  kubernetes.core.k8s:
+    name: "{{ NAMESPACE_NAME }}-{{ item }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+    kubeconfig: "{{ K8S_AUTH_KUBECONFIG }}"
+
+- name: Install | Set quay secret config
+  set_fact:
+    QUAY_PULL_SECRET: "{{ lookup('template', './quay-secret.json.j2') | b64encode }}"
+
+- name: Install | Add quay pull secret
+  kubernetes.core.k8s:
+    state: present
+    template: ./templates/k8s-secret.yml.j2
+    kubeconfig: "{{ K8S_AUTH_KUBECONFIG }}"
+  vars:
+    object_name: quay-image-pull-secret 
