@@ -1,3 +1,10 @@
+- name: Assert | Check environments
+  assert:
+    fail_msg: ENV_LIST must be valid
+    that:
+    - ENV_LIST is defined
+    - ENV_LIST | length > 0
+
 - name: Assert | Check Gitlab's URL
   assert:
     fail_msg: GITLAB_URL must be a valid URL
