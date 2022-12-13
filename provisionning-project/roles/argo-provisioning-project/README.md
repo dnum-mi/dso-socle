@@ -19,7 +19,7 @@ This role creates ArgoCD-operator-based `AppProject` objects.
     - production
 
     GITLAB_USER: myminion
-    GITLAB_TOKEN: glpat-v2hPsNobbR8v2s189b2F
+    GITLAB_TOKEN: glpat-xxxxxxxxxxxxxxxxxxxx
 
     GITLAB_URL: https://gitlab.myorg.com
     GITLAB_PROJECT_PATH: "{{ GITLAB_URL }}/myorg/myproject/mygitops.git"
